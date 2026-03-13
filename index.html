@@ -468,7 +468,7 @@
 
         <!-- SQL Preview -->
         <div class="sql-preview" id="sqlPreview">
-          <div class="sql-preview-label">Generated SQL Query</div>
+          <div class="sql-preview-label">Extracted ICP Fields</div>
           <div id="sqlPreviewText"></div>
         </div>
       </div>
@@ -646,80 +646,56 @@ document.querySelectorAll('.suggestion-chip').forEach(chip => {
 /* ══════════════════════════════════════════
    AI SEARCH — GROQ SQL GENERATION
 ══════════════════════════════════════════ */
-const SCHEMA = `
-Table: prospects
-Columns:
-  first_name       TEXT
-  middle_name      TEXT
-  last_name        TEXT
-  title            TEXT  -- job title e.g. "Marketing Manager", "CEO"
-  company_name     TEXT
-  mailing_address  TEXT
-  primary_city     TEXT
-  primary_state    TEXT
-  zip_code         TEXT
-  country          TEXT
-  phone            TEXT
-  web_address      TEXT
-  email            TEXT
-  revenue          TEXT  -- e.g. "$1M-$10M", "$10M-$50M"
-  employee         TEXT  -- e.g. "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10001+"
-  industry         TEXT  -- e.g. "Healthcare", "Financial Services", "Manufacturing", "Software & Internet", "Government", "Computers & Electronics", "Business Services", "Education", "Energy & Utilities", "Real Estate & Construction", "Telecommunications", "Retail", "Media & Entertainment", "Consumer Services", "Non-Profit", "Transportation & Storage", "Travel, Recreation, and Leisure", "Wholesale & Distribution", "Agriculture & Mining", "Other"
-  sub_industry     TEXT
-  seniority        TEXT  -- one of: "Intern", "Specialist", "Senior", "Senior-Level", "Manager", "Head", "Director", "Vice President", "President/Vice President", "Partner", "Owner", "Founder", "C-Level"
-  is_decision_maker TEXT -- "TRUE" or "FALSE"
-`;
+const SENIORITY_VALUES = ['Intern','Specialist','Senior','Senior-Level','Manager','Head','Director','Vice President','President/Vice President','Partner','Owner','Founder','C-Level'];
+const INDUSTRY_VALUES  = ['Healthcare','Financial Services','Manufacturing','Software & Internet','Government','Computers & Electronics','Business Services','Education','Energy & Utilities','Real Estate & Construction','Telecommunications','Retail','Media & Entertainment','Consumer Services','Non-Profit','Transportation & Storage','Travel, Recreation, and Leisure','Wholesale & Distribution','Agriculture & Mining','Other'];
 
-const SYSTEM_PROMPT = `You are a prospect search assistant that generates PostgreSQL SELECT queries.
+const SYSTEM_PROMPT = `You are an ICP (Ideal Customer Profile) field extractor.
+Given a natural language description of target prospects, extract structured field values and return them as a JSON object.
 
-${SCHEMA}
-
-REQUIRED FIELDS — the user's prompt MUST provide enough information to determine ALL THREE of these:
-1. job_title — a job title or role (e.g. "Manager", "Director", "CEO")
+REQUIRED FIELDS — you must be able to extract ALL THREE from the prompt:
+1. job_title — a job title or role keyword (e.g. "Manager", "Director", "CEO", "Software Engineer")
 2. location — a city, state, or country (e.g. "New York", "California", "United States")
-3. industry — a business industry (e.g. "Healthcare", "Financial Services", "Software & Internet")
+3. industry — a business industry
 
-STEP 1 — CHECK FOR REQUIRED FIELDS:
-Before generating SQL, check if the prompt clearly provides job_title, location, and industry.
-- If ANY of the three required fields is missing or cannot be reasonably inferred, respond with EXACTLY this format and nothing else:
-  MISSING: <comma-separated list of missing fields>
-  HINT: <one friendly sentence asking the user to provide the missing fields>
-  Example: MISSING: location, industry
-  HINT: Please specify a location (city, state, or country) and an industry to narrow your search.
+OPTIONAL FIELDS (extract if mentioned, otherwise return empty string ""):
+- seniority — must be one of EXACTLY: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP→Vice President, CEO/CTO/CFO/Chief→C-Level. If not mentioned return "".
+- company — company name keyword. If not mentioned return "".
+- is_decision_maker — "TRUE" if user says decision maker/decision-making role, otherwise "".
 
-STEP 2 — GENERATE SQL (only if all required fields are present):
-Your ENTIRE response must be ONLY the raw SQL query — nothing else before or after it.
-Start directly with SELECT. No markdown, no backticks, no explanation.
+INDUSTRY MAPPING — map user's words to closest value from this list:
+Healthcare, Financial Services, Manufacturing, Software & Internet, Government, Computers & Electronics, Business Services, Education, Energy & Utilities, Real Estate & Construction, Telecommunications, Retail, Media & Entertainment, Consumer Services, Non-Profit, Transportation & Storage, Travel Recreation and Leisure, Wholesale & Distribution, Agriculture & Mining, Other.
+Examples: finance/financial→Financial Services, tech/technology/software→Software & Internet, healthcare/medical/pharma→Healthcare, real estate/construction→Real Estate & Construction, nonprofit→Non-Profit.
 
-STRICT SQL RULES:
-1. Only SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
-2. Query FROM prospects only.
-3. Use ILIKE '%value%' for text matching.
-4. Seniority exact values: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP=Vice President, CEO/CTO/CFO=C-Level.
-5. Industry mapping: finance/financial=Financial Services, tech/technology=Software & Internet, healthcare=Healthcare, manufacturing=Manufacturing, government=Government, education=Education, retail=Retail, real estate=Real Estate & Construction, telecom=Telecommunications, media=Media & Entertainment, nonprofit=Non-Profit, transport=Transportation & Storage, energy=Energy & Utilities, computers/electronics=Computers & Electronics, business services=Business Services.
-6. is_decision_maker: use = 'TRUE' or = 'FALSE' only.
-7. End with LIMIT N (no semicolon).`;
+IF any of the 3 required fields (job_title, location, industry) is missing or cannot be inferred:
+Return ONLY this JSON and nothing else:
+{"missing": ["field1", "field2"], "hint": "friendly message telling user what to add"}
 
-let generatedSQL = '';
+IF all required fields are present:
+Return ONLY a valid JSON object like this and nothing else — no explanation, no markdown, no backticks:
+{"job_title": "...", "location": "...", "industry": "...", "seniority": "...", "company": "", "is_decision_maker": ""}`;
 
-document.getElementById('aiGenerateBtn').addEventListener('click', generateSQL);
+let generatedFields = null;
 
-async function generateSQL() {
+document.getElementById('aiGenerateBtn').addEventListener('click', generateFields);
+
+async function generateFields() {
   const prompt = document.getElementById('a_prompt').value.trim();
   if (!prompt) { showToast('Please describe your target prospect first.', 'error'); return; }
 
-  const limit = parseInt(val('a_daily_limit')) || 25;
-  const statusEl = document.getElementById('aiStatus');
+  const statusEl  = document.getElementById('aiStatus');
   const previewEl = document.getElementById('sqlPreview');
   const previewText = document.getElementById('sqlPreviewText');
   const generateBtn = document.getElementById('aiGenerateBtn');
-  const submitBtn = document.getElementById('aiSubmitBtn');
+  const submitBtn   = document.getElementById('aiSubmitBtn');
+  const promptEl    = document.getElementById('a_prompt');
 
   generateBtn.disabled = true;
   submitBtn.disabled = true;
-  generatedSQL = '';
+  generatedFields = null;
   previewEl.classList.remove('visible');
-  statusEl.innerHTML = `<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span> Generating SQL query with Groq`;
+  promptEl.style.borderColor = '';
+  statusEl.style.color = '';
+  statusEl.innerHTML = `<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span> Extracting ICP fields with Groq`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -731,10 +707,10 @@ async function generateSQL() {
       body: JSON.stringify({
         model: GROQ_MODEL,
         temperature: 0.1,
-        max_tokens: 500,
+        max_tokens: 300,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: `Generate a SQL query for: "${prompt}"\nUse LIMIT ${limit}` }
+          { role: 'user', content: prompt }
         ]
       })
     });
@@ -747,54 +723,50 @@ async function generateSQL() {
     const data = await res.json();
     let raw = data.choices?.[0]?.message?.content?.trim() || '';
 
-    // ── Check if model flagged missing required fields ──
-    if (raw.toUpperCase().startsWith('MISSING:')) {
-      const lines = raw.split('\n');
-      const missingLine = lines[0].replace(/^MISSING:/i, '').trim();
-      const hintLine = lines.find(l => l.toUpperCase().startsWith('HINT:'))?.replace(/^HINT:/i, '').trim() || '';
-      const missingFields = missingLine.split(',').map(f => f.trim());
+    // Strip markdown fences if model added them
+    raw = raw.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
 
-      // Highlight the prompt textarea in warning style
-      document.getElementById('a_prompt').style.borderColor = '#f59e0b';
-      statusEl.innerHTML = `⚠ Missing: <strong>${missingFields.join(', ')}</strong> — ${hintLine}`;
+    // Extract JSON — find first { to last }
+    const jsonStart = raw.indexOf('{');
+    const jsonEnd   = raw.lastIndexOf('}');
+    if (jsonStart < 0 || jsonEnd < 0) throw new Error('Could not parse response. Try rephrasing.');
+    const parsed = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+
+    // Check if model flagged missing fields
+    if (parsed.missing && parsed.missing.length > 0) {
+      promptEl.style.borderColor = '#f59e0b';
       statusEl.style.color = '#f59e0b';
+      statusEl.innerHTML = `⚠ Missing: <strong>${parsed.missing.join(', ')}</strong> — ${parsed.hint || 'Please provide the missing fields.'}`;
       generateBtn.disabled = false;
       return;
     }
 
-    // Reset styles
-    document.getElementById('a_prompt').style.borderColor = '';
-    statusEl.style.color = '';
-
-    // ── Robust SQL extraction ──
-    // 1. Strip markdown code fences
-    let sql = raw.replace(/```[a-zA-Z]*\n?/gi, '').replace(/```/g, '').trim();
-    // 2. Extract from first SELECT (in case model added preamble text)
-    const selectIdx = sql.toUpperCase().indexOf('SELECT');
-    if (selectIdx > 0) sql = sql.slice(selectIdx);
-    else if (selectIdx < 0) throw new Error('Model did not return a SELECT query. Try rephrasing.');
-    // 3. Take only the first statement if multiple
-    const firstSemi = sql.indexOf(';');
-    if (firstSemi > 0) sql = sql.slice(0, firstSemi);
-    sql = sql.trim();
-
-    // ── Safety validation ──
-    const upper = sql.toUpperCase();
-    if (!upper.startsWith('SELECT')) throw new Error('Could not extract a valid SELECT query. Try rephrasing.');
-    if (!upper.includes('FROM PROSPECTS')) throw new Error('Query must target the prospects table.');
-    const blocked = ['INSERT','UPDATE','DELETE','DROP','ALTER','TRUNCATE','CREATE','GRANT','REVOKE'];
-    for (const kw of blocked) {
-      if (upper.includes(kw)) throw new Error(`Blocked keyword detected: ${kw}`);
-    }
-    // Enforce LIMIT
-    if (!upper.includes('LIMIT')) {
-      sql = sql + ` LIMIT ${limit}`;
+    // Validate required fields came back
+    if (!parsed.job_title || !parsed.location || !parsed.industry) {
+      promptEl.style.borderColor = '#f59e0b';
+      statusEl.style.color = '#f59e0b';
+      const missing = ['job_title','location','industry'].filter(f => !parsed[f]);
+      statusEl.innerHTML = `⚠ Could not extract: <strong>${missing.join(', ')}</strong> — please be more specific.`;
+      generateBtn.disabled = false;
+      return;
     }
 
-    generatedSQL = sql;
-    previewText.textContent = sql;
+    generatedFields = parsed;
+
+    // Show extracted fields preview
+    const lines = [
+      `job_title       : ${parsed.job_title}`,
+      `location        : ${parsed.location}`,
+      `industry        : ${parsed.industry}`,
+      parsed.seniority       ? `seniority       : ${parsed.seniority}` : null,
+      parsed.company         ? `company         : ${parsed.company}` : null,
+      parsed.is_decision_maker === 'TRUE' ? `is_decision_maker: TRUE` : null,
+    ].filter(Boolean).join('\n');
+
+    previewText.textContent = lines;
     previewEl.classList.add('visible');
-    statusEl.innerHTML = '✓ Query generated — review and launch';
+    statusEl.style.color = '';
+    statusEl.innerHTML = '✓ Fields extracted — review and launch';
     submitBtn.disabled = false;
 
   } catch (err) {
@@ -806,75 +778,60 @@ async function generateSQL() {
 }
 
 /* ══════════════════════════════════════════
-   AI FORM SUBMIT — execute SQL + send to webhook
+   AI FORM SUBMIT — send extracted fields to webhook
 ══════════════════════════════════════════ */
 document.getElementById('aiForm').addEventListener('submit', async e => {
   e.preventDefault();
   const title = val('a_title'), rep = val('a_assigned_rep');
   if (!title) { document.getElementById('a_title').classList.add('error'); showToast('Campaign title is required.','error'); return; }
   if (!rep)   { document.getElementById('a_assigned_rep').classList.add('error'); showToast('Assigned rep is required.','error'); return; }
-  if (!generatedSQL) { showToast('Generate a SQL query first using ✦', 'error'); return; }
+  if (!generatedFields) { showToast('Extract fields first using ✦', 'error'); return; }
 
-  const limit = parseInt(val('a_daily_limit')) || 25;
+  const payload = {
+    title,
+    assigned_rep        : rep,
+    daily_prospect_limit: parseInt(val('a_daily_limit')) || 25,
+    data_source         : document.querySelector('input[name="a_data_source"]:checked')?.value || 'own_database',
+    // ICP fields extracted by Groq from natural language
+    job_title           : generatedFields.job_title        || '',
+    location            : generatedFields.location         || '',
+    industry            : generatedFields.industry         || '',
+    seniority           : generatedFields.seniority        || '',
+    company             : generatedFields.company          || '',
+    is_decision_maker   : generatedFields.is_decision_maker || '',
+    name                : '',
+    // Meta
+    ai_search           : true,
+    ai_prompt           : document.getElementById('a_prompt').value.trim(),
+    row_number          : Date.now()
+  };
+
   setLoading('aiSubmitBtn', true, 'Launch AI Prospect Search →');
-  document.getElementById('aiStatus').innerHTML = '<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span> Executing query…';
-
   try {
-    // Execute SQL directly on Supabase via rpc or raw query endpoint
-    const sqlRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/execute_query`, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE_ANON,
-        'Authorization': `Bearer ${SUPABASE_ANON}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ query: generatedSQL })
-    });
-
-    let prospects = [];
-
-    if (sqlRes.ok) {
-      prospects = await sqlRes.json();
-    } else {
-      // Fallback: send SQL to n8n and let it execute
-      prospects = null;
-    }
-
-    const payload = {
-      title, assigned_rep: rep,
-      daily_prospect_limit: limit,
-      data_source: document.querySelector('input[name="a_data_source"]:checked')?.value || 'own_database',
-      ai_search: true,
-      ai_prompt: document.getElementById('a_prompt').value.trim(),
-      ai_sql: generatedSQL,
-      prospects: prospects, // null if n8n should execute
-      row_number: Date.now()
-    };
-
-    const webhookRes = await fetch(WEBHOOK_URL, {
+    const res = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-
-    if (webhookRes.ok) {
+    if (res.ok) {
       showToast('✓ AI campaign launched! Prospects are being queued.', 'success');
       document.getElementById('aiForm').reset();
       document.getElementById('a_daily_limit').value = 25;
       document.getElementById('sqlPreview').classList.remove('visible');
       document.getElementById('aiStatus').innerHTML = '';
       document.getElementById('aiSubmitBtn').disabled = true;
-      generatedSQL = '';
+      document.getElementById('a_prompt').style.borderColor = '';
+      generatedFields = null;
     } else {
-      showToast(`Webhook error: ${webhookRes.status}`, 'error');
+      showToast(`Webhook error: ${res.status}`, 'error');
     }
-  } catch (err) {
-    showToast('Error: ' + err.message, 'error');
+  } catch {
+    showToast('Network error — check your connection.', 'error');
   } finally {
     setLoading('aiSubmitBtn', false, 'Launch AI Prospect Search →');
     document.getElementById('aiStatus').innerHTML = '';
   }
-});
+});;
 
 ['a_title','a_assigned_rep'].forEach(id => {
   document.getElementById(id)?.addEventListener('input', () => document.getElementById(id)?.classList.remove('error'));

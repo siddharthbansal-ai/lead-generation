@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TrendWire — ICP Prospect Form</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --surface: #111118; --surface2: #18181f;
+    --border: #2a2a38; --accent: #6effc7; --accent2: #a78bfa;
+    --text: #f0f0f5; --muted: #6b6b80; --danger: #ff6b6b; --radius: 12px;
+  }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace; min-height: 100vh;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 40px 20px 80px; position: relative; overflow-x: hidden;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px; opacity: 0.35; z-index: 0; pointer-events: none;
+  }
+  .orb { position: fixed; border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+  .orb-1 { width: 500px; height: 500px; background: rgba(110,255,199,0.06); top: -150px; right: -100px; }
+  .orb-2 { width: 400px; height: 400px; background: rgba(167,139,250,0.06); bottom: 100px; left: -150px; }
+
+  .wrapper { width: 100%; max-width: 720px; position: relative; z-index: 1; animation: fadeUp 0.6s ease both; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+  /* Header */
+  .header { margin-bottom: 36px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(110,255,199,0.08); border: 1px solid rgba(110,255,199,0.2);
+    color: var(--accent); font-size: 11px; font-weight: 500;
+    padding: 4px 12px; border-radius: 100px; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .badge-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(28px,5vw,42px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 10px; }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 4px; margin-bottom: 20px; }
+  .tab-btn {
+    flex: 1; padding: 10px 16px; border: none; border-radius: 10px;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; background: transparent; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .tab-btn.active { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .tab-btn.active.ai-tab { color: var(--accent2); border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.06); }
+  .tab-icon { font-size: 15px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; margin-bottom: 16px; }
+  .section-label {
+    font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background: var(--border); }
+  .section-label.ai-label { color: var(--accent2); }
+  .section-label.ai-label::after { background: rgba(167,139,250,0.2); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .span-2 { grid-column: span 2; }
+  .field { display: flex; flex-direction: column; gap: 6px; position: relative; }
+
+  label.field-label { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  label.field-label .req { color: var(--accent); margin-left: 2px; }
+
+  input[type="text"], input[type="number"], select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 11px 14px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%; appearance: none; -webkit-appearance: none;
+  }
+  input[type="text"]::placeholder, input[type="number"]::placeholder, textarea::placeholder { color: var(--muted); }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,255,199,0.08);
+  }
+  input.error, select.error, textarea.error { border-color: var(--danger); }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b80' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer;
+  }
+  textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+  textarea:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(167,139,250,0.08); }
+
+  .field-hint { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+  /* Radio */
+  .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .radio-option { position: relative; }
+  .radio-option input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+  .radio-card {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; user-select: none;
+  }
+  .radio-option input[type="radio"]:checked + .radio-card {
+    border-color: var(--accent); background: rgba(110,255,199,0.05); box-shadow: 0 0 0 3px rgba(110,255,199,0.08);
+  }
+  .radio-dot { width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0; transition: border-color 0.2s; position: relative; }
+  .radio-option input[type="radio"]:checked + .radio-card .radio-dot { border-color: var(--accent); }
+  .radio-dot::after {
+    content: ''; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0);
+    width: 7px; height: 7px; background: var(--accent); border-radius: 50%; transition: transform 0.2s;
+  }
+  .radio-option input[type="radio"]:checked + .radio-card .radio-dot::after { transform: translate(-50%,-50%) scale(1); }
+  .radio-text { display: flex; flex-direction: column; gap: 2px; }
+  .radio-title { font-size: 13px; color: var(--text); }
+  .radio-sub   { font-size: 10px; color: var(--muted); }
+
+  /* Autocomplete */
+  .ac-wrap { position: relative; }
+  .ac-drop {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); z-index: 200; max-height: 230px;
+    overflow-y: auto; display: none; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  }
+  .ac-drop.open { display: block; }
+  .ac-drop::-webkit-scrollbar { width: 4px; }
+  .ac-drop::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .ac-item { padding: 10px 14px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.12s; border-bottom: 1px solid rgba(42,42,56,0.5); }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.active { background: var(--surface2); }
+  .ac-flag { font-size: 15px; flex-shrink: 0; }
+  .ac-name { color: var(--text); }
+  .ac-sub  { color: var(--muted); font-size: 10px; margin-top: 1px; }
+  .ac-status { padding: 12px 14px; font-size: 12px; color: var(--muted); text-align: center; }
+
+  /* Toggle */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .tl-main { font-size: 13px; color: var(--text); }
+  .tl-sub  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .toggle  { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 100px; cursor: pointer; transition: background 0.2s; }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle-track::after { content: ''; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+  /* AI Search specific */
+  .ai-prompt-wrap { position: relative; }
+  .ai-prompt-wrap textarea { padding-right: 50px; }
+  .ai-send-btn {
+    position: absolute; right: 10px; bottom: 10px;
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--accent2); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.2s, transform 0.15s; color: white; font-size: 16px;
+  }
+  .ai-send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+  .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Prompt suggestions */
+  .suggestions-label { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+  .suggestions-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .suggestion-chip {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 12px; font-size: 11px;
+    color: var(--muted); cursor: pointer; font-family: 'DM Mono', monospace;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    line-height: 1.4;
+  }
+  .suggestion-chip:hover { border-color: rgba(167,139,250,0.4); color: var(--accent2); background: rgba(167,139,250,0.06); }
+
+  /* Generated SQL preview */
+  .sql-preview {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px;
+    font-size: 11px; color: #a0e4ff; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-all;
+    display: none; margin-top: 16px;
+    border-left: 3px solid var(--accent2);
+  }
+  .sql-preview.visible { display: block; }
+  .sql-preview-label { font-size: 10px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* AI status */
+  .ai-status { font-size: 12px; color: var(--muted); margin-top: 10px; min-height: 18px; display: flex; align-items: center; gap: 8px; }
+  .ai-status .dot-anim span { display: inline-block; animation: dotBounce 1.2s infinite; }
+  .ai-status .dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+  .ai-status .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-4px)} }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%; padding: 16px; background: var(--accent); color: #0a0a0f;
+    border: none; border-radius: var(--radius); font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 28px;
+  }
+  .submit-btn.ai-submit { background: var(--accent2); color: white; }
+  .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 8px 32px rgba(110,255,199,0.2); }
+  .submit-btn.ai-submit:hover { box-shadow: 0 8px 32px rgba(167,139,250,0.25); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .submit-btn .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.25); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .submit-btn.loading .spinner { display: block; }
+  .submit-btn.loading .btn-text { opacity: 0.6; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 24px; font-size: 13px; opacity: 0; transition: opacity 0.3s, transform 0.3s; z-index: 999; pointer-events: none; max-width: 440px; text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: rgba(110,255,199,0.3); color: var(--accent); }
+  .toast.error   { border-color: rgba(255,107,107,0.3); color: var(--danger); }
+
+  @media (max-width: 580px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .span-2 { grid-column: span 1; }
+    .card   { padding: 24px 18px; }
+    .radio-group { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="wrapper">
+  <div class="header">
+    <div class="badge"><span class="badge-dot"></span> TrendWire AI</div>
+    <h1>Prospect <span>ICP</span> Form</h1>
+    <p class="subtitle">Define your Ideal Customer Profile. Matching prospects will be queued and pushed to your Instantly campaign.</p>
+  </div>
+
+  <!-- Tab switcher -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabFilter" onclick="switchTab('filter')">
+      <span class="tab-icon">⚙️</span> Filter Form
+    </button>
+    <button class="tab-btn ai-tab" id="tabAI" onclick="switchTab('ai')">
+      <span class="tab-icon">✦</span> AI Search
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 1 — FILTER FORM
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel active" id="panelFilter">
+    <form id="filterForm" novalidate>
+
+      <!-- Campaign Info -->
+      <div class="card">
+        <div class="section-label">Campaign Info</div>
+        <div class="grid-2">
+          <div class="field span-2">
+            <label class="field-label">Campaign Title <span class="req">*</span></label>
+            <input type="text" id="f_title" placeholder="e.g. SaaS Founders — Q2 Outbound" required />
+          </div>
+          <div class="field">
+            <label class="field-label">Assigned Rep <span class="req">*</span></label>
+            <input type="text" id="f_assigned_rep" placeholder="e.g. alex@trendwire.ai" required />
+          </div>
+          <div class="field">
+            <label class="field-label">Daily Prospect Limit</label>
+            <input type="number" id="f_daily_limit" min="1" max="500" value="25" />
+            <span class="field-hint">Max leads pulled per run</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Source -->
+      <div class="card">
+        <div class="section-label">Data Source</div>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="f_data_source" value="own_database" checked />
+            <div class="radio-card">
+              <div class="radio-dot"></div>
+              <div class="radio-text">
+                <div class="radio-title">Own Database</div>
+                <div class="radio-sub">Query from Supabase prospects</div>
+              </div>
+            </div>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="f_data_source" value="redrob" />
+            <div class="radio-card">
+              <div class="radio-dot"></div>
+              <div class="radio-text">
+                <div class="radio-title">RedRob</div>
+                <div class="radio-sub">Fetch via RedRob API</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Target Persona -->
+      <div class="card">
+        <div class="section-label">Target Persona</div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Name / Keyword</label>
+            <input type="text" id="f_name" placeholder="e.g. John" />
+            <span class="field-hint">Searches first + last name</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Job Title</label>
+            <input type="text" id="f_job_title" placeholder="e.g. Marketing Manager" />
+          </div>
+          <div class="field">
+            <label class="field-label">Seniority</label>
+            <select id="f_seniority">
+              <option value="">Any seniority</option>
+              <option>Intern</option>
+              <option>Specialist</option>
+              <option>Senior</option>
+              <option>Senior-Level</option>
+              <option>Manager</option>
+              <option>Head</option>
+              <option>Director</option>
+              <option>Vice President</option>
+              <option>President/Vice President</option>
+              <option>Partner</option>
+              <option>Owner</option>
+              <option>Founder</option>
+              <option>C-Level</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Location</label>
+            <div class="ac-wrap">
+              <input type="text" id="f_location" placeholder="Type a city, state or country…" autocomplete="off" />
+              <div class="ac-drop" id="acDrop"></div>
+            </div>
+            <span class="field-hint">City, state, or country</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="field">
+          <label class="field-label">Decision Maker Only</label>
+          <div class="toggle-row">
+            <div>
+              <div class="tl-main">Filter for decision makers</div>
+              <div class="tl-sub">C-Level, VP, Director, Owner, Founder, etc.</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="f_dm" />
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Company Filters -->
+      <div class="card">
+        <div class="section-label">Company Filters</div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="field-label">Industry</label>
+            <input type="text" id="f_industry" placeholder="e.g. Healthcare, Financial Services" />
+            <span class="field-hint">Each word will be auto-capitalized</span>
+          </div>
+          <div class="field">
+            <label class="field-label">Company Name</label>
+            <input type="text" id="f_company" placeholder="e.g. Acme Corp" />
+            <span class="field-hint">Partial match supported</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="filterSubmitBtn">
+        <div class="spinner"></div>
+        <span class="btn-text">Launch Prospect Search →</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       TAB 2 — AI SEARCH
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="panelAI">
+    <form id="aiForm" novalidate>
+
+      <!-- Campaign Info (shared) -->
+      <div class="card">
+        <div class="section-label">Campaign Info</div>
+        <div class="grid-2">
+          <div class="field span-2">
+            <label class="field-label">Campaign Title <span class="req">*</span></label>
+            <input type="text" id="a_title" placeholder="e.g. SaaS Founders — Q2 Outbound" required />
+          </div>
+          <div class="field">
+            <label class="field-label">Assigned Rep <span class="req">*</span></label>
+            <input type="text" id="a_assigned_rep" placeholder="e.g. alex@trendwire.ai" required />
+          </div>
+          <div class="field">
+            <label class="field-label">Daily Prospect Limit</label>
+            <input type="number" id="a_daily_limit" min="1" max="500" value="25" />
+            <span class="field-hint">Max leads pulled per run</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Source -->
+      <div class="card">
+        <div class="section-label">Data Source</div>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="a_data_source" value="own_database" checked />
+            <div class="radio-card">
+              <div class="radio-dot"></div>
+              <div class="radio-text">
+                <div class="radio-title">Own Database</div>
+                <div class="radio-sub">Query from Supabase prospects</div>
+              </div>
+            </div>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="a_data_source" value="redrob" />
+            <div class="radio-card">
+              <div class="radio-dot"></div>
+              <div class="radio-text">
+                <div class="radio-title">RedRob</div>
+                <div class="radio-sub">Fetch via RedRob API</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- AI Prompt -->
+      <div class="card">
+        <div class="section-label ai-label">✦ Natural Language Search</div>
+
+        <div class="field" style="margin-bottom: 20px;">
+          <label class="field-label">Describe your target prospect</label>
+          <div class="ai-prompt-wrap">
+            <textarea id="a_prompt" placeholder="e.g. Directors in financial services in New York who are decision makers with companies over 500 employees" rows="4"></textarea>
+            <button type="button" class="ai-send-btn" id="aiGenerateBtn" title="Generate SQL">✦</button>
+          </div>
+          <div class="ai-status" id="aiStatus"></div>
+        </div>
+
+        <!-- Prompt suggestions -->
+        <div class="suggestions-label">Try these prompts</div>
+        <div class="suggestions-grid" id="suggestionsGrid">
+          <div class="suggestion-chip">Directors in financial services in New York</div>
+          <div class="suggestion-chip">C-Level decision makers in healthcare</div>
+          <div class="suggestion-chip">Founders in software companies in California</div>
+          <div class="suggestion-chip">VP of Marketing in retail industry</div>
+          <div class="suggestion-chip">Managers in manufacturing companies in Texas</div>
+          <div class="suggestion-chip">Owners of small businesses in Florida</div>
+          <div class="suggestion-chip">Senior engineers in tech companies</div>
+          <div class="suggestion-chip">Directors in non-profit organizations</div>
+        </div>
+
+        <!-- SQL Preview -->
+        <div class="sql-preview" id="sqlPreview">
+          <div class="sql-preview-label">Generated SQL Query</div>
+          <div id="sqlPreviewText"></div>
+        </div>
+      </div>
+
+      <button type="submit" class="submit-btn ai-submit" id="aiSubmitBtn" disabled>
+        <div class="spinner"></div>
+        <span class="btn-text">Launch AI Prospect Search →</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIG
+══════════════════════════════════════════ */
+const SUPABASE_URL  = 'https://bjhhnbdrxddqpttavitf.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaGhuYmRyeGRkcXB0dGF2aXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzQxODksImV4cCI6MjA4ODcxMDE4OX0.DO4G4OkgzCluyDqdGzOMY96x-VJ6iDmmW97CuY5Akyo';
+const WEBHOOK_URL   = 'https://trendwireai.app.n8n.cloud/webhook/a17c0f82-1720-4f03-9951-f10b491bead3';
+const GROQ_API_KEY  = '<groq_api_key>';
+const GROQ_MODEL    = 'llama-3.3-70b-versatile';
+
+/* ══════════════════════════════════════════
+   TABS
+══════════════════════════════════════════ */
+function switchTab(tab) {
+  document.getElementById('panelFilter').classList.toggle('active', tab === 'filter');
+  document.getElementById('panelAI').classList.toggle('active', tab === 'ai');
+  document.getElementById('tabFilter').classList.toggle('active', tab === 'filter');
+  document.getElementById('tabAI').classList.toggle('active', tab === 'ai');
+}
+
+/* ══════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════ */
+function toTitleCase(str) {
+  if (!str) return '';
+  return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => { t.className = 'toast'; }, 4500);
+}
+
+function setLoading(btnId, on, text) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  btn.querySelector('.btn-text').textContent = on ? 'Sending…' : text;
+}
+
+/* ══════════════════════════════════════════
+   LOCATION AUTOCOMPLETE
+══════════════════════════════════════════ */
+const locInput = document.getElementById('f_location');
+const acDrop   = document.getElementById('acDrop');
+let acTimer = null, activeIdx = -1;
+
+locInput.addEventListener('input', () => {
+  clearTimeout(acTimer);
+  const q = locInput.value.trim();
+  if (q.length < 2) { closeDrop(); return; }
+  acTimer = setTimeout(() => searchLocations(q), 350);
+});
+locInput.addEventListener('keydown', e => {
+  const items = acDrop.querySelectorAll('.ac-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); activateItem(Math.min(activeIdx+1, items.length-1)); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); activateItem(Math.max(activeIdx-1, 0)); }
+  else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); items[activeIdx].click(); }
+  else if (e.key === 'Escape') closeDrop();
+});
+document.addEventListener('click', e => {
+  if (!locInput.contains(e.target) && !acDrop.contains(e.target)) closeDrop();
+});
+function activateItem(idx) {
+  activeIdx = idx;
+  acDrop.querySelectorAll('.ac-item').forEach((el,i) => el.classList.toggle('active', i===idx));
+  acDrop.querySelectorAll('.ac-item')[idx]?.scrollIntoView({ block:'nearest' });
+}
+function closeDrop() { acDrop.classList.remove('open'); acDrop.innerHTML=''; activeIdx=-1; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function buildItem(flag, name, sub, value) {
+  return `<div class="ac-item" data-value="${esc(value)}"><span class="ac-flag">${flag}</span><div><div class="ac-name">${esc(name)}</div>${sub?`<div class="ac-sub">${esc(sub)}</div>`:''}</div></div>`;
+}
+function bindItems() {
+  acDrop.querySelectorAll('.ac-item').forEach((el,i) => {
+    el.addEventListener('mouseenter', () => activateItem(i));
+    el.addEventListener('click', () => { locInput.value = el.dataset.value; closeDrop(); });
+  });
+}
+function countryFlag(code) {
+  if (!code || code.length!==2) return '📍';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0-65+c.charCodeAt(0)));
+}
+async function searchLocations(q) {
+  acDrop.innerHTML = '<div class="ac-status">Searching…</div>';
+  acDrop.classList.add('open');
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=8&accept-language=en`, { headers:{'Accept-Language':'en'} });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (!data.length) { acDrop.innerHTML = buildItem('📍',q,'Use as typed',q); bindItems(); return; }
+    const seen = new Set(), html = [];
+    for (const item of data) {
+      const addr = item.address||{};
+      let name='', sub='', flag=countryFlag(addr.country_code);
+      if (item.type==='country') { name=addr.country||item.display_name.split(',')[0]; sub='Country'; }
+      else if (addr.city||addr.town||addr.village) { name=addr.city||addr.town||addr.village; sub=[addr.state,addr.country].filter(Boolean).join(', '); }
+      else if (addr.state) { name=addr.state; sub=addr.country||''; }
+      else { name=item.display_name.split(',')[0]; sub=item.display_name.split(',').slice(1,3).join(',').trim(); }
+      const value = sub?`${name}, ${sub}`:name;
+      if (seen.has(value)) continue; seen.add(value);
+      html.push(buildItem(flag,name,sub,value));
+      if (html.length>=6) break;
+    }
+    acDrop.innerHTML = html.join(''); bindItems();
+  } catch { acDrop.innerHTML=buildItem('📍',q,'Use as typed',q); bindItems(); }
+}
+
+/* ══════════════════════════════════════════
+   FILTER FORM SUBMIT
+══════════════════════════════════════════ */
+document.getElementById('filterForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const title = val('f_title'), rep = val('f_assigned_rep');
+  if (!title) { document.getElementById('f_title').classList.add('error'); showToast('Campaign title is required.','error'); return; }
+  if (!rep)   { document.getElementById('f_assigned_rep').classList.add('error'); showToast('Assigned rep is required.','error'); return; }
+
+  const payload = {
+    title, assigned_rep: rep,
+    daily_prospect_limit: parseInt(val('f_daily_limit'))||25,
+    data_source: document.querySelector('input[name="f_data_source"]:checked')?.value||'own_database',
+    name: val('f_name'), job_title: val('f_job_title'),
+    seniority: val('f_seniority'), location: locInput.value.trim(),
+    is_decision_maker: document.getElementById('f_dm').checked ? 'TRUE' : '',
+    industry: toTitleCase(val('f_industry')), company: val('f_company'),
+    row_number: Date.now()
+  };
+
+  setLoading('filterSubmitBtn', true, 'Launch Prospect Search →');
+  try {
+    const res = await fetch(WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    if (res.ok) {
+      showToast('✓ Campaign launched! Prospects are being queued.', 'success');
+      document.getElementById('filterForm').reset();
+      document.getElementById('f_daily_limit').value = 25;
+      locInput.value = '';
+    } else { showToast(`Webhook error: ${res.status}`, 'error'); }
+  } catch { showToast('Network error — check your connection.', 'error'); }
+  finally { setLoading('filterSubmitBtn', false, 'Launch Prospect Search →'); }
+});
+
+['f_title','f_assigned_rep'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', () => document.getElementById(id)?.classList.remove('error'));
+});
+
+/* ══════════════════════════════════════════
+   AI SEARCH — PROMPT SUGGESTIONS
+══════════════════════════════════════════ */
+document.querySelectorAll('.suggestion-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('a_prompt').value = chip.textContent.trim();
+    document.getElementById('a_prompt').focus();
+  });
+});
+
+/* ══════════════════════════════════════════
+   AI SEARCH — GROQ SQL GENERATION
+══════════════════════════════════════════ */
+const SCHEMA = `
+Table: prospects
+Columns:
+  first_name       TEXT
+  middle_name      TEXT
+  last_name        TEXT
+  title            TEXT  -- job title e.g. "Marketing Manager", "CEO"
+  company_name     TEXT
+  mailing_address  TEXT
+  primary_city     TEXT
+  primary_state    TEXT
+  zip_code         TEXT
+  country          TEXT
+  phone            TEXT
+  web_address      TEXT
+  email            TEXT
+  revenue          TEXT  -- e.g. "$1M-$10M", "$10M-$50M"
+  employee         TEXT  -- e.g. "1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10001+"
+  industry         TEXT  -- e.g. "Healthcare", "Financial Services", "Manufacturing", "Software & Internet", "Government", "Computers & Electronics", "Business Services", "Education", "Energy & Utilities", "Real Estate & Construction", "Telecommunications", "Retail", "Media & Entertainment", "Consumer Services", "Non-Profit", "Transportation & Storage", "Travel, Recreation, and Leisure", "Wholesale & Distribution", "Agriculture & Mining", "Other"
+  sub_industry     TEXT
+  seniority        TEXT  -- one of: "Intern", "Specialist", "Senior", "Senior-Level", "Manager", "Head", "Director", "Vice President", "President/Vice President", "Partner", "Owner", "Founder", "C-Level"
+  is_decision_maker TEXT -- "TRUE" or "FALSE"
+`;
+
+const SYSTEM_PROMPT = `You are a SQL query generator for a PostgreSQL database.
+Your ENTIRE response must be ONLY the raw SQL query — nothing else before or after it.
+Do NOT write any explanation, intro, notes, markdown, or code fences.
+Start your response directly with SELECT and end with LIMIT N.
+
+${SCHEMA}
+
+STRICT RULES:
+1. Begin response with SELECT — absolutely nothing before it.
+2. Only SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
+3. Query FROM prospects only.
+4. Use ILIKE '%value%' for text matching.
+5. Seniority exact values: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP=Vice President, CEO/CTO/CFO=C-Level.
+6. Industry mapping: finance/financial=Financial Services, tech/technology=Software & Internet, healthcare=Healthcare, etc.
+7. is_decision_maker: use = 'TRUE' or = 'FALSE' only.
+8. End with LIMIT N (no semicolon).`;
+
+let generatedSQL = '';
+
+document.getElementById('aiGenerateBtn').addEventListener('click', generateSQL);
+
+async function generateSQL() {
+  const prompt = document.getElementById('a_prompt').value.trim();
+  if (!prompt) { showToast('Please describe your target prospect first.', 'error'); return; }
+
+  const limit = parseInt(val('a_daily_limit')) || 25;
+  const statusEl = document.getElementById('aiStatus');
+  const previewEl = document.getElementById('sqlPreview');
+  const previewText = document.getElementById('sqlPreviewText');
+  const generateBtn = document.getElementById('aiGenerateBtn');
+  const submitBtn = document.getElementById('aiSubmitBtn');
+
+  generateBtn.disabled = true;
+  submitBtn.disabled = true;
+  generatedSQL = '';
+  previewEl.classList.remove('visible');
+  statusEl.innerHTML = `<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span> Generating SQL query with Groq`;
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        temperature: 0.1,
+        max_tokens: 500,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Generate a SQL query for: "${prompt}"\nUse LIMIT ${limit}` }
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `Groq error ${res.status}`);
+    }
+
+    const data = await res.json();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+
+    // ── Robust SQL extraction ──
+    // 1. Strip markdown code fences
+    let sql = raw.replace(/```[a-zA-Z]*\n?/gi, '').replace(/```/g, '').trim();
+    // 2. Extract from first SELECT (in case model added preamble text)
+    const selectIdx = sql.toUpperCase().indexOf('SELECT');
+    if (selectIdx > 0) sql = sql.slice(selectIdx);
+    else if (selectIdx < 0) throw new Error('Model did not return a SELECT query. Try rephrasing.');
+    // 3. Take only the first statement if multiple
+    const firstSemi = sql.indexOf(';');
+    if (firstSemi > 0) sql = sql.slice(0, firstSemi);
+    sql = sql.trim();
+
+    // ── Safety validation ──
+    const upper = sql.toUpperCase();
+    if (!upper.startsWith('SELECT')) throw new Error('Could not extract a valid SELECT query. Try rephrasing.');
+    if (!upper.includes('FROM PROSPECTS')) throw new Error('Query must target the prospects table.');
+    const blocked = ['INSERT','UPDATE','DELETE','DROP','ALTER','TRUNCATE','CREATE','GRANT','REVOKE'];
+    for (const kw of blocked) {
+      if (upper.includes(kw)) throw new Error(`Blocked keyword detected: ${kw}`);
+    }
+    // Enforce LIMIT
+    if (!upper.includes('LIMIT')) {
+      sql = sql + ` LIMIT ${limit}`;
+    }
+
+    generatedSQL = sql;
+    previewText.textContent = sql;
+    previewEl.classList.add('visible');
+    statusEl.innerHTML = '✓ Query generated — review and launch';
+    submitBtn.disabled = false;
+
+  } catch (err) {
+    statusEl.innerHTML = `⚠ ${err.message}`;
+    showToast(err.message, 'error');
+  } finally {
+    generateBtn.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════
+   AI FORM SUBMIT — execute SQL + send to webhook
+══════════════════════════════════════════ */
+document.getElementById('aiForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const title = val('a_title'), rep = val('a_assigned_rep');
+  if (!title) { document.getElementById('a_title').classList.add('error'); showToast('Campaign title is required.','error'); return; }
+  if (!rep)   { document.getElementById('a_assigned_rep').classList.add('error'); showToast('Assigned rep is required.','error'); return; }
+  if (!generatedSQL) { showToast('Generate a SQL query first using ✦', 'error'); return; }
+
+  const limit = parseInt(val('a_daily_limit')) || 25;
+  setLoading('aiSubmitBtn', true, 'Launch AI Prospect Search →');
+  document.getElementById('aiStatus').innerHTML = '<span class="dot-anim"><span>.</span><span>.</span><span>.</span></span> Executing query…';
+
+  try {
+    // Execute SQL directly on Supabase via rpc or raw query endpoint
+    const sqlRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/execute_query`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: generatedSQL })
+    });
+
+    let prospects = [];
+
+    if (sqlRes.ok) {
+      prospects = await sqlRes.json();
+    } else {
+      // Fallback: send SQL to n8n and let it execute
+      prospects = null;
+    }
+
+    const payload = {
+      title, assigned_rep: rep,
+      daily_prospect_limit: limit,
+      data_source: document.querySelector('input[name="a_data_source"]:checked')?.value || 'own_database',
+      ai_search: true,
+      ai_prompt: document.getElementById('a_prompt').value.trim(),
+      ai_sql: generatedSQL,
+      prospects: prospects, // null if n8n should execute
+      row_number: Date.now()
+    };
+
+    const webhookRes = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (webhookRes.ok) {
+      showToast('✓ AI campaign launched! Prospects are being queued.', 'success');
+      document.getElementById('aiForm').reset();
+      document.getElementById('a_daily_limit').value = 25;
+      document.getElementById('sqlPreview').classList.remove('visible');
+      document.getElementById('aiStatus').innerHTML = '';
+      document.getElementById('aiSubmitBtn').disabled = true;
+      generatedSQL = '';
+    } else {
+      showToast(`Webhook error: ${webhookRes.status}`, 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    setLoading('aiSubmitBtn', false, 'Launch AI Prospect Search →');
+    document.getElementById('aiStatus').innerHTML = '';
+  }
+});
+
+['a_title','a_assigned_rep'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', () => document.getElementById(id)?.classList.remove('error'));
+});
+</script>
+</body>
+</html>

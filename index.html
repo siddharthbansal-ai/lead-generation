@@ -511,6 +511,159 @@ function toTitleCase(str) {
   return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
+/* ── Industry fuzzy normalizer ── */
+const INDUSTRIES = [
+  'Healthcare','Financial Services','Manufacturing','Software & Internet',
+  'Government','Computers & Electronics','Business Services','Education',
+  'Energy & Utilities','Real Estate & Construction','Telecommunications',
+  'Retail','Media & Entertainment','Consumer Services','Non-Profit',
+  'Transportation & Storage','Travel, Recreation, and Leisure',
+  'Wholesale & Distribution','Agriculture & Mining','Other'
+];
+
+// Keyword map for common terms that fuzzy scoring might miss
+const INDUSTRY_KEYWORDS = {
+  'it consulting'        : 'Computers & Electronics',
+  'it services'          : 'Computers & Electronics',
+  'information technology': 'Computers & Electronics',
+  'tech'                 : 'Software & Internet',
+  'technology'           : 'Software & Internet',
+  'software'             : 'Software & Internet',
+  'saas'                 : 'Software & Internet',
+  'internet'             : 'Software & Internet',
+  'finance'              : 'Financial Services',
+  'financial'            : 'Financial Services',
+  'banking'              : 'Financial Services',
+  'insurance'            : 'Financial Services',
+  'investment'           : 'Financial Services',
+  'medical'              : 'Healthcare',
+  'pharma'               : 'Healthcare',
+  'pharmaceutical'       : 'Healthcare',
+  'hospital'             : 'Healthcare',
+  'health'               : 'Healthcare',
+  'construction'         : 'Real Estate & Construction',
+  'real estate'          : 'Real Estate & Construction',
+  'property'             : 'Real Estate & Construction',
+  'telecom'              : 'Telecommunications',
+  'telecommunications'   : 'Telecommunications',
+  'nonprofit'            : 'Non-Profit',
+  'non profit'           : 'Non-Profit',
+  'ngo'                  : 'Non-Profit',
+  'media'                : 'Media & Entertainment',
+  'entertainment'        : 'Media & Entertainment',
+  'advertising'          : 'Media & Entertainment',
+  'logistics'            : 'Transportation & Storage',
+  'transport'            : 'Transportation & Storage',
+  'shipping'             : 'Transportation & Storage',
+  'wholesale'            : 'Wholesale & Distribution',
+  'distribution'         : 'Wholesale & Distribution',
+  'agriculture'          : 'Agriculture & Mining',
+  'mining'               : 'Agriculture & Mining',
+  'farming'              : 'Agriculture & Mining',
+  'energy'               : 'Energy & Utilities',
+  'utilities'            : 'Energy & Utilities',
+  'oil'                  : 'Energy & Utilities',
+  'gas'                  : 'Energy & Utilities',
+  'travel'               : 'Travel, Recreation, and Leisure',
+  'tourism'              : 'Travel, Recreation, and Leisure',
+  'hospitality'          : 'Travel, Recreation, and Leisure',
+  'hotel'                : 'Travel, Recreation, and Leisure',
+  'education'            : 'Education',
+  'university'           : 'Education',
+  'school'               : 'Education',
+  'government'           : 'Government',
+  'public sector'        : 'Government',
+  'retail'               : 'Retail',
+  'ecommerce'            : 'Retail',
+  'e-commerce'           : 'Retail',
+  'consumer'             : 'Consumer Services',
+  'business services'    : 'Business Services',
+  'consulting'           : 'Business Services',
+  'staffing'             : 'Business Services',
+  'hr'                   : 'Business Services',
+  'recruiting'           : 'Business Services',
+  'computers'            : 'Computers & Electronics',
+  'electronics'          : 'Computers & Electronics',
+  'hardware'             : 'Computers & Electronics',
+};
+
+// Simple bigram similarity score
+function similarity(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (a === b) return 1;
+  if (a.length < 2 || b.length < 2) return 0;
+  const getBigrams = s => { const bg = new Set(); for (let i=0;i<s.length-1;i++) bg.add(s[i]+s[i+1]); return bg; };
+  const ba = getBigrams(a), bb = getBigrams(b);
+  let inter = 0;
+  ba.forEach(g => { if (bb.has(g)) inter++; });
+  return (2.0 * inter) / (ba.size + bb.size);
+}
+
+function normalizeIndustry(input) {
+  if (!input) return '';
+  const lower = input.toLowerCase().trim();
+
+  // 1. Check keyword map first
+  for (const [kw, mapped] of Object.entries(INDUSTRY_KEYWORDS)) {
+    if (lower.includes(kw)) return mapped;
+  }
+
+  // 2. Check exact match (case-insensitive)
+  const exact = INDUSTRIES.find(i => i.toLowerCase() === lower);
+  if (exact) return exact;
+
+  // 3. Fuzzy match — find best scoring industry
+  let best = '', bestScore = 0;
+  for (const ind of INDUSTRIES) {
+    const score = similarity(lower, ind.toLowerCase());
+    if (score > bestScore) { bestScore = score; best = ind; }
+  }
+
+  // Only use fuzzy match if score is decent (>0.25), otherwise keep original title-cased
+  return bestScore > 0.25 ? best : toTitleCase(input);
+}
+
+/* ── Seniority normalizer ── */
+const SENIORITY_MAP = {
+  'intern'              : 'Intern',
+  'internship'          : 'Intern',
+  'specialist'          : 'Specialist',
+  'senior'              : 'Senior',
+  'senior level'        : 'Senior-Level',
+  'senior-level'        : 'Senior-Level',
+  'manager'             : 'Manager',
+  'head'                : 'Head',
+  'director'            : 'Director',
+  'vp'                  : 'Vice President',
+  'vice president'      : 'Vice President',
+  'svp'                 : 'Vice President',
+  'evp'                 : 'Vice President',
+  'president'           : 'President/Vice President',
+  'partner'             : 'Partner',
+  'owner'               : 'Owner',
+  'founder'             : 'Founder',
+  'co-founder'          : 'Founder',
+  'cofounder'           : 'Founder',
+  'c-level'             : 'C-Level',
+  'c level'             : 'C-Level',
+  'ceo'                 : 'C-Level',
+  'cto'                 : 'C-Level',
+  'cfo'                 : 'C-Level',
+  'coo'                 : 'C-Level',
+  'cmo'                 : 'C-Level',
+  'chief'               : 'C-Level',
+};
+
+function normalizeSeniority(input) {
+  if (!input) return '';
+  const lower = input.toLowerCase().trim();
+  // Direct map lookup
+  for (const [kw, mapped] of Object.entries(SENIORITY_MAP)) {
+    if (lower === kw || lower.includes(kw)) return mapped;
+  }
+  return input; // return as-is if no match
+}
+
 function val(id) { return document.getElementById(id)?.value?.trim() || ''; }
 
 function showToast(msg, type = 'success') {
@@ -610,10 +763,13 @@ document.getElementById('filterForm').addEventListener('submit', async e => {
     daily_prospect_limit: parseInt(val('f_daily_limit'))||25,
     data_source: document.querySelector('input[name="f_data_source"]:checked')?.value||'own_database',
     name: val('f_name'), job_title: val('f_job_title'),
-    seniority: val('f_seniority'), location: locInput.value.trim(),
+    seniority: normalizeSeniority(val('f_seniority')), location: locInput.value.trim(),
     is_decision_maker: document.getElementById('f_dm').checked ? 'TRUE' : '',
-    industry: toTitleCase(val('f_industry')), company: val('f_company'),
-    row_number: Date.now()
+    industry: normalizeIndustry(val('f_industry')), company: val('f_company'),
+    ai_search    : false,
+    input_method : 'filter_form',
+    ai_prompt    : '',
+    row_number   : Date.now()
   };
 
   setLoading('filterSubmitBtn', true, 'Launch Prospect Search →');
@@ -658,7 +814,7 @@ REQUIRED FIELDS — you must be able to extract ALL THREE from the prompt:
 3. industry — a business industry
 
 OPTIONAL FIELDS (extract if mentioned, otherwise return empty string ""):
-- seniority — must be one of EXACTLY: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP→Vice President, CEO/CTO/CFO/Chief→C-Level. If not mentioned return "".
+- seniority — extract ONLY if the prompt mentions a seniority level. If the job title IS the seniority (e.g. 'Founders'→Founder, 'Directors'→Director, 'Managers'→Manager, 'CEOs'→C-Level), set seniority to match. Must be one of EXACTLY: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Mappings: VP/SVP/EVP→Vice President, CEO/CTO/CFO/COO/CMO/Chief→C-Level, Founder/Co-Founder/Cofounder→Founder, Owner→Owner. If unclear or not mentioned return "".
 - company — company name keyword. If not mentioned return "".
 - is_decision_maker — "TRUE" if user says decision maker/decision-making role, otherwise "".
 
@@ -793,12 +949,12 @@ document.getElementById('aiForm').addEventListener('submit', async e => {
     daily_prospect_limit: parseInt(val('a_daily_limit')) || 25,
     data_source         : document.querySelector('input[name="a_data_source"]:checked')?.value || 'own_database',
     // ICP fields extracted by Groq from natural language
-    job_title           : generatedFields.job_title        || '',
-    location            : generatedFields.location         || '',
-    industry            : generatedFields.industry         || '',
-    seniority           : generatedFields.seniority        || '',
-    company             : generatedFields.company          || '',
-    is_decision_maker   : generatedFields.is_decision_maker || '',
+    job_title           : generatedFields.job_title                             || '',
+    location            : generatedFields.location                              || '',
+    industry            : normalizeIndustry(generatedFields.industry            || ''),
+    seniority           : normalizeSeniority(generatedFields.seniority          || ''),
+    company             : generatedFields.company                               || '',
+    is_decision_maker   : generatedFields.is_decision_maker                     || '',
     name                : '',
     // Meta
     ai_search           : true,

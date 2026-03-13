@@ -670,22 +670,35 @@ Columns:
   is_decision_maker TEXT -- "TRUE" or "FALSE"
 `;
 
-const SYSTEM_PROMPT = `You are a SQL query generator for a PostgreSQL database.
-Your ENTIRE response must be ONLY the raw SQL query — nothing else before or after it.
-Do NOT write any explanation, intro, notes, markdown, or code fences.
-Start your response directly with SELECT and end with LIMIT N.
+const SYSTEM_PROMPT = `You are a prospect search assistant that generates PostgreSQL SELECT queries.
 
 ${SCHEMA}
 
-STRICT RULES:
-1. Begin response with SELECT — absolutely nothing before it.
-2. Only SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
-3. Query FROM prospects only.
-4. Use ILIKE '%value%' for text matching.
-5. Seniority exact values: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP=Vice President, CEO/CTO/CFO=C-Level.
-6. Industry mapping: finance/financial=Financial Services, tech/technology=Software & Internet, healthcare=Healthcare, etc.
-7. is_decision_maker: use = 'TRUE' or = 'FALSE' only.
-8. End with LIMIT N (no semicolon).`;
+REQUIRED FIELDS — the user's prompt MUST provide enough information to determine ALL THREE of these:
+1. job_title — a job title or role (e.g. "Manager", "Director", "CEO")
+2. location — a city, state, or country (e.g. "New York", "California", "United States")
+3. industry — a business industry (e.g. "Healthcare", "Financial Services", "Software & Internet")
+
+STEP 1 — CHECK FOR REQUIRED FIELDS:
+Before generating SQL, check if the prompt clearly provides job_title, location, and industry.
+- If ANY of the three required fields is missing or cannot be reasonably inferred, respond with EXACTLY this format and nothing else:
+  MISSING: <comma-separated list of missing fields>
+  HINT: <one friendly sentence asking the user to provide the missing fields>
+  Example: MISSING: location, industry
+  HINT: Please specify a location (city, state, or country) and an industry to narrow your search.
+
+STEP 2 — GENERATE SQL (only if all required fields are present):
+Your ENTIRE response must be ONLY the raw SQL query — nothing else before or after it.
+Start directly with SELECT. No markdown, no backticks, no explanation.
+
+STRICT SQL RULES:
+1. Only SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, CREATE.
+2. Query FROM prospects only.
+3. Use ILIKE '%value%' for text matching.
+4. Seniority exact values: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Map: VP=Vice President, CEO/CTO/CFO=C-Level.
+5. Industry mapping: finance/financial=Financial Services, tech/technology=Software & Internet, healthcare=Healthcare, manufacturing=Manufacturing, government=Government, education=Education, retail=Retail, real estate=Real Estate & Construction, telecom=Telecommunications, media=Media & Entertainment, nonprofit=Non-Profit, transport=Transportation & Storage, energy=Energy & Utilities, computers/electronics=Computers & Electronics, business services=Business Services.
+6. is_decision_maker: use = 'TRUE' or = 'FALSE' only.
+7. End with LIMIT N (no semicolon).`;
 
 let generatedSQL = '';
 
@@ -733,6 +746,25 @@ async function generateSQL() {
 
     const data = await res.json();
     let raw = data.choices?.[0]?.message?.content?.trim() || '';
+
+    // ── Check if model flagged missing required fields ──
+    if (raw.toUpperCase().startsWith('MISSING:')) {
+      const lines = raw.split('\n');
+      const missingLine = lines[0].replace(/^MISSING:/i, '').trim();
+      const hintLine = lines.find(l => l.toUpperCase().startsWith('HINT:'))?.replace(/^HINT:/i, '').trim() || '';
+      const missingFields = missingLine.split(',').map(f => f.trim());
+
+      // Highlight the prompt textarea in warning style
+      document.getElementById('a_prompt').style.borderColor = '#f59e0b';
+      statusEl.innerHTML = `⚠ Missing: <strong>${missingFields.join(', ')}</strong> — ${hintLine}`;
+      statusEl.style.color = '#f59e0b';
+      generateBtn.disabled = false;
+      return;
+    }
+
+    // Reset styles
+    document.getElementById('a_prompt').style.borderColor = '';
+    statusEl.style.color = '';
 
     // ── Robust SQL extraction ──
     // 1. Strip markdown code fences

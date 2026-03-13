@@ -935,16 +935,35 @@ document.getElementById('filterForm').addEventListener('submit', async e => {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
     });
     if (res.ok) {
-      showToast('✓ Campaign launched! Prospects are being queued.', 'success');
+      const campaignUrl = `https://app.instantly.ai/app/campaign/${title}/leads`;
       document.getElementById('filterForm').reset();
       document.getElementById('f_daily_limit').value = 25;
-      // Clear tag inputs
       tagStores['f_position_input'] = [];
       tagStores['f_keywords_input'] = [];
       document.getElementById('f_position_tags').innerHTML = '';
       document.getElementById('f_keywords_tags').innerHTML = '';
       document.getElementById('f_position_wrap').classList.remove('error');
       locInput.value = '';
+
+      // Countdown redirect
+      let secs = 5;
+      const filterStatus = document.createElement('div');
+      filterStatus.style.cssText = 'text-align:center;color:var(--accent);font-size:13px;margin-top:12px;';
+      document.getElementById('filterSubmitBtn').after(filterStatus);
+      filterStatus.innerHTML = `✓ Campaign launched! Redirecting to Instantly in ${secs}s…`;
+      showToast(`✓ Launched! Redirecting in ${secs}s…`, 'success');
+
+      const countdown = setInterval(() => {
+        secs--;
+        if (secs > 0) {
+          filterStatus.innerHTML = `✓ Campaign launched! Redirecting to Instantly in ${secs}s…`;
+        } else {
+          clearInterval(countdown);
+          filterStatus.innerHTML = '';
+          window.location.href = campaignUrl;
+        }
+      }, 1000);
+
     } else {
       showToast(`Webhook error: ${res.status}`, 'error');
     }
@@ -1154,7 +1173,7 @@ document.getElementById('aiForm').addEventListener('submit', async e => {
       body: JSON.stringify(payload)
     });
     if (res.ok) {
-      showToast('✓ AI campaign launched! Prospects are being queued.', 'success');
+      const campaignUrl = `https://app.instantly.ai/app/campaign/${title}/leads`;
       document.getElementById('aiForm').reset();
       document.getElementById('a_daily_limit').value = 25;
       document.getElementById('sqlPreview').classList.remove('visible');
@@ -1162,6 +1181,25 @@ document.getElementById('aiForm').addEventListener('submit', async e => {
       document.getElementById('aiSubmitBtn').disabled = true;
       document.getElementById('a_prompt').style.borderColor = '';
       generatedFields = null;
+
+      // Countdown redirect
+      let secs = 5;
+      const statusEl = document.getElementById('aiStatus');
+      statusEl.style.color = 'var(--accent)';
+      statusEl.innerHTML = `✓ Campaign launched! Redirecting to Instantly in ${secs}s…`;
+      showToast(`✓ Launched! Redirecting in ${secs}s…`, 'success');
+
+      const countdown = setInterval(() => {
+        secs--;
+        if (secs > 0) {
+          statusEl.innerHTML = `✓ Campaign launched! Redirecting to Instantly in ${secs}s…`;
+        } else {
+          clearInterval(countdown);
+          statusEl.innerHTML = '';
+          window.location.href = campaignUrl;
+        }
+      }, 1000);
+
     } else {
       showToast(`Webhook error: ${res.status}`, 'error');
     }
@@ -1169,7 +1207,6 @@ document.getElementById('aiForm').addEventListener('submit', async e => {
     showToast('Network error — check your connection.', 'error');
   } finally {
     setLoading('aiSubmitBtn', false, 'Launch AI Prospect Search →');
-    document.getElementById('aiStatus').innerHTML = '';
   }
 });;
 

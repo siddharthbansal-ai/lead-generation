@@ -230,6 +230,39 @@
     .card   { padding: 24px 18px; }
     .radio-group { grid-template-columns: 1fr; }
   }
+
+  /* ── Tag Input ── */
+  .tag-input-wrap {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px 10px;
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    cursor: text; transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 46px;
+  }
+  .tag-input-wrap:focus-within {
+    border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110,255,199,0.08);
+  }
+  .tag-input-wrap.error { border-color: var(--danger); }
+  .tag-text-input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 3px 4px; flex: 1; min-width: 160px;
+    appearance: none; -webkit-appearance: none; width: auto;
+  }
+  .tag-text-input::placeholder { color: var(--muted); }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(110,255,199,0.1); border: 1px solid rgba(110,255,199,0.25);
+    color: var(--accent); border-radius: 6px;
+    padding: 3px 8px; font-size: 11px; font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+  .tag-chip .tag-remove {
+    cursor: pointer; opacity: 0.6; font-size: 13px; line-height: 1;
+    transition: opacity 0.15s; padding: 0 1px;
+  }
+  .tag-chip .tag-remove:hover { opacity: 1; }
+
 </style>
 </head>
 <body>
@@ -264,8 +297,11 @@
         <div class="section-label">Campaign Info</div>
         <div class="grid-2">
           <div class="field span-2">
-            <label class="field-label">Campaign Title <span class="req">*</span></label>
-            <input type="text" id="f_title" placeholder="e.g. SaaS Founders — Q2 Outbound" required />
+            <label class="field-label">Campaign <span class="req">*</span></label>
+            <select id="f_title" required>
+              <option value="">Loading campaigns…</option>
+            </select>
+            <span class="field-hint">Select an Instantly campaign</span>
           </div>
           <div class="field">
             <label class="field-label">Assigned Rep <span class="req">*</span></label>
@@ -306,39 +342,37 @@
         </div>
       </div>
 
-      <!-- Target Persona -->
+      <!-- ICP Definition -->
       <div class="card">
-        <div class="section-label">Target Persona</div>
+        <div class="section-label">Define ICP</div>
         <div class="grid-2">
-          <div class="field">
-            <label class="field-label">Name / Keyword</label>
-            <input type="text" id="f_name" placeholder="e.g. John" />
-            <span class="field-hint">Searches first + last name</span>
+
+          <!-- Position tag input -->
+          <div class="field span-2">
+            <label class="field-label">Position <span class="req">*</span></label>
+            <div class="tag-input-wrap" id="f_position_wrap">
+              <div class="tags-container" id="f_position_tags"></div>
+              <input type="text" class="tag-text-input" id="f_position_input" placeholder="Type a position and press Enter…" autocomplete="off" />
+            </div>
+            <span class="field-hint">e.g. Founder, CEO, CTO — press Enter or comma to add</span>
           </div>
+
+          <!-- Industry -->
           <div class="field">
-            <label class="field-label">Job Title</label>
-            <input type="text" id="f_job_title" placeholder="e.g. Marketing Manager" />
+            <label class="field-label">Industry</label>
+            <input type="text" id="f_industry" placeholder="e.g. Software & Internet" />
+            <span class="field-hint">Auto-mapped to closest industry</span>
           </div>
+
+          <!-- Sub Industry -->
           <div class="field">
-            <label class="field-label">Seniority</label>
-            <select id="f_seniority">
-              <option value="">Any seniority</option>
-              <option>Intern</option>
-              <option>Specialist</option>
-              <option>Senior</option>
-              <option>Senior-Level</option>
-              <option>Manager</option>
-              <option>Head</option>
-              <option>Director</option>
-              <option>Vice President</option>
-              <option>President/Vice President</option>
-              <option>Partner</option>
-              <option>Owner</option>
-              <option>Founder</option>
-              <option>C-Level</option>
-            </select>
+            <label class="field-label">Sub Industry</label>
+            <input type="text" id="f_sub_industry" placeholder="e.g. SaaS, Fintech, EdTech" />
+            <span class="field-hint">Vertical or specialisation</span>
           </div>
-          <div class="field">
+
+          <!-- Location -->
+          <div class="field span-2">
             <label class="field-label">Location</label>
             <div class="ac-wrap">
               <input type="text" id="f_location" placeholder="Type a city, state or country…" autocomplete="off" />
@@ -346,8 +380,22 @@
             </div>
             <span class="field-hint">City, state, or country</span>
           </div>
+
+          <!-- Business Keywords tag input -->
+          <div class="field span-2">
+            <label class="field-label">Business Keywords</label>
+            <div class="tag-input-wrap" id="f_keywords_wrap">
+              <div class="tags-container" id="f_keywords_tags"></div>
+              <input type="text" class="tag-text-input" id="f_keywords_input" placeholder="Type a keyword and press Enter…" autocomplete="off" />
+            </div>
+            <span class="field-hint">Searches across job title, industry and sub industry</span>
+          </div>
+
         </div>
+
         <div class="divider"></div>
+
+        <!-- Decision Maker toggle -->
         <div class="field">
           <label class="field-label">Decision Maker Only</label>
           <div class="toggle-row">
@@ -363,23 +411,6 @@
         </div>
       </div>
 
-      <!-- Company Filters -->
-      <div class="card">
-        <div class="section-label">Company Filters</div>
-        <div class="grid-2">
-          <div class="field">
-            <label class="field-label">Industry</label>
-            <input type="text" id="f_industry" placeholder="e.g. Healthcare, Financial Services" />
-            <span class="field-hint">Each word will be auto-capitalized</span>
-          </div>
-          <div class="field">
-            <label class="field-label">Company Name</label>
-            <input type="text" id="f_company" placeholder="e.g. Acme Corp" />
-            <span class="field-hint">Partial match supported</span>
-          </div>
-        </div>
-      </div>
-
       <button type="submit" class="submit-btn" id="filterSubmitBtn">
         <div class="spinner"></div>
         <span class="btn-text">Launch Prospect Search →</span>
@@ -387,7 +418,7 @@
     </form>
   </div>
 
-  <!-- ══════════════════════════════════════════
+<!-- ══════════════════════════════════════════
        TAB 2 — AI SEARCH
   ══════════════════════════════════════════ -->
   <div class="tab-panel" id="panelAI">
@@ -398,8 +429,11 @@
         <div class="section-label">Campaign Info</div>
         <div class="grid-2">
           <div class="field span-2">
-            <label class="field-label">Campaign Title <span class="req">*</span></label>
-            <input type="text" id="a_title" placeholder="e.g. SaaS Founders — Q2 Outbound" required />
+            <label class="field-label">Campaign <span class="req">*</span></label>
+            <select id="a_title" required>
+              <option value="">Loading campaigns…</option>
+            </select>
+            <span class="field-hint">Select an Instantly campaign</span>
           </div>
           <div class="field">
             <label class="field-label">Assigned Rep <span class="req">*</span></label>
@@ -489,7 +523,8 @@
 ══════════════════════════════════════════ */
 const SUPABASE_URL  = 'https://bjhhnbdrxddqpttavitf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqaGhuYmRyeGRkcXB0dGF2aXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMzQxODksImV4cCI6MjA4ODcxMDE4OX0.DO4G4OkgzCluyDqdGzOMY96x-VJ6iDmmW97CuY5Akyo';
-const WEBHOOK_URL   = 'https://trendwireai.app.n8n.cloud/webhook/a17c0f82-1720-4f03-9951-f10b491bead3';
+const WEBHOOK_URL        = 'https://trendwireai.app.n8n.cloud/webhook/a17c0f82-1720-4f03-9951-f10b491bead3';
+const FETCH_CAMPAIGNS_URL = 'https://trendwireai.app.n8n.cloud/webhook/fetch-campaigns';
 const GROQ_API_KEY  = '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';
 const GROQ_MODEL    = 'llama-3.3-70b-versatile';
 
@@ -750,44 +785,178 @@ async function searchLocations(q) {
 }
 
 /* ══════════════════════════════════════════
+   FETCH CAMPAIGNS ON PAGE LOAD
+══════════════════════════════════════════ */
+async function loadCampaigns() {
+  const dropdowns = ['f_title', 'a_title'];
+  try {
+    const res  = await fetch(FETCH_CAMPAIGNS_URL);
+    if (!res.ok) throw new Error(`Status ${res.status}`);
+    const data = await res.json();
+
+    // Handle both array response and {items:[]} response
+    const campaigns = Array.isArray(data) ? data : (data.items || []);
+
+    dropdowns.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Select a campaign…</option>';
+      if (!campaigns.length) {
+        sel.innerHTML = '<option value="">No active campaigns found</option>';
+        return;
+      }
+      campaigns.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+      });
+    });
+  } catch (err) {
+    dropdowns.forEach(id => {
+      const sel = document.getElementById(id);
+      if (sel) sel.innerHTML = '<option value="">⚠ Could not load campaigns</option>';
+    });
+    console.error('loadCampaigns error:', err);
+  }
+}
+
+loadCampaigns();
+
+/* ══════════════════════════════════════════
+   TAG INPUT SYSTEM
+══════════════════════════════════════════ */
+const tagStores = {};
+
+function initTagInput(inputId, tagsId, wrapId) {
+  const input = document.getElementById(inputId);
+  const tagsEl = document.getElementById(tagsId);
+  const wrap   = document.getElementById(wrapId);
+  tagStores[inputId] = [];
+
+  function addTag(raw) {
+    const val = raw.trim().replace(/,+$/, '').trim();
+    if (!val || tagStores[inputId].includes(val)) return;
+    tagStores[inputId].push(val);
+    const chip = document.createElement('div');
+    chip.className = 'tag-chip';
+    chip.innerHTML = `<span>${val}</span><span class="tag-remove" data-val="${val}">×</span>`;
+    chip.querySelector('.tag-remove').addEventListener('click', () => {
+      tagStores[inputId] = tagStores[inputId].filter(t => t !== val);
+      chip.remove();
+    });
+    tagsEl.appendChild(chip);
+    input.value = '';
+  }
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(input.value);
+    } else if (e.key === 'Backspace' && !input.value && tagStores[inputId].length) {
+      const last = tagStores[inputId][tagStores[inputId].length - 1];
+      tagStores[inputId].pop();
+      tagsEl.lastChild?.remove();
+    }
+  });
+  input.addEventListener('blur', () => { if (input.value.trim()) addTag(input.value); });
+  wrap.addEventListener('click', () => input.focus());
+}
+
+function getTagValues(inputId) {
+  return tagStores[inputId] || [];
+}
+
+// Init tag inputs
+initTagInput('f_position_input', 'f_position_tags', 'f_position_wrap');
+initTagInput('f_keywords_input', 'f_keywords_tags', 'f_keywords_wrap');
+
+/* ══════════════════════════════════════════
    FILTER FORM SUBMIT
 ══════════════════════════════════════════ */
 document.getElementById('filterForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const title = val('f_title'), rep = val('f_assigned_rep');
-  if (!title) { document.getElementById('f_title').classList.add('error'); showToast('Campaign title is required.','error'); return; }
-  if (!rep)   { document.getElementById('f_assigned_rep').classList.add('error'); showToast('Assigned rep is required.','error'); return; }
+  const titleEl = document.getElementById('f_title');
+  const title = titleEl.value; // campaign ID
+  const campaign_name = titleEl.options[titleEl.selectedIndex]?.text || '';
+  const rep = val('f_assigned_rep');
+  const positions = getTagValues('f_position_input');
+
+  if (!title) {
+    titleEl.classList.add('error');
+    showToast('Please select a campaign.', 'error'); return;
+  }
+  if (!rep) {
+    document.getElementById('f_assigned_rep').classList.add('error');
+    showToast('Assigned rep is required.', 'error'); return;
+  }
+  if (!positions.length) {
+    document.getElementById('f_position_wrap').classList.add('error');
+    showToast('At least one position is required.', 'error'); return;
+  }
+
+  const keywords    = getTagValues('f_keywords_input');
+  const subIndustry = val('f_sub_industry');
+
+  // sub_industry logic: use typed value, else map from keywords, else ""
+  const resolvedSubIndustry = subIndustry
+    ? subIndustry
+    : keywords.length ? keywords.join(', ') : '';
+
+  // seniority: only meaningful if single position
+  const resolvedSeniority = positions.length === 1
+    ? normalizeSeniority(positions[0])
+    : '';
 
   const payload = {
-    title, assigned_rep: rep,
-    daily_prospect_limit: parseInt(val('f_daily_limit'))||25,
-    data_source: document.querySelector('input[name="f_data_source"]:checked')?.value||'own_database',
-    name: val('f_name'), job_title: val('f_job_title'),
-    seniority: normalizeSeniority(val('f_seniority')), location: locInput.value.trim(),
-    is_decision_maker: document.getElementById('f_dm').checked ? 'TRUE' : '',
-    industry: normalizeIndustry(val('f_industry')), company: val('f_company'),
-    ai_search    : false,
-    input_method : 'filter_form',
-    ai_prompt    : '',
-    row_number   : Date.now()
+    title,
+    campaign_name       : campaign_name,
+    assigned_rep        : rep,
+    daily_prospect_limit: parseInt(val('f_daily_limit')) || 25,
+    data_source         : document.querySelector('input[name="f_data_source"]:checked')?.value || 'own_database',
+    job_title           : positions.join(','),
+    industry            : normalizeIndustry(val('f_industry')),
+    specialties         : resolvedSubIndustry,
+    seniority           : resolvedSeniority,
+    location            : locInput.value.trim(),
+    is_decision_maker   : document.getElementById('f_dm').checked ? 'TRUE' : '',
+    // kept for n8n compatibility
+    name                : '',
+    company             : '',
+    ai_search           : false,
+    input_method        : 'filter_form',
+    ai_prompt           : '',
+    row_number          : Date.now()
   };
 
   setLoading('filterSubmitBtn', true, 'Launch Prospect Search →');
   try {
-    const res = await fetch(WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const res = await fetch(WEBHOOK_URL, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+    });
     if (res.ok) {
       showToast('✓ Campaign launched! Prospects are being queued.', 'success');
       document.getElementById('filterForm').reset();
       document.getElementById('f_daily_limit').value = 25;
+      // Clear tag inputs
+      tagStores['f_position_input'] = [];
+      tagStores['f_keywords_input'] = [];
+      document.getElementById('f_position_tags').innerHTML = '';
+      document.getElementById('f_keywords_tags').innerHTML = '';
+      document.getElementById('f_position_wrap').classList.remove('error');
       locInput.value = '';
-    } else { showToast(`Webhook error: ${res.status}`, 'error'); }
+    } else {
+      showToast(`Webhook error: ${res.status}`, 'error');
+    }
   } catch { showToast('Network error — check your connection.', 'error'); }
   finally { setLoading('filterSubmitBtn', false, 'Launch Prospect Search →'); }
 });
 
 ['f_title','f_assigned_rep'].forEach(id => {
-  document.getElementById(id)?.addEventListener('input', () => document.getElementById(id)?.classList.remove('error'));
+  document.getElementById(id)?.addEventListener('input', () =>
+    document.getElementById(id)?.classList.remove('error'));
 });
+
 
 /* ══════════════════════════════════════════
    AI SEARCH — PROMPT SUGGESTIONS
@@ -808,27 +977,27 @@ const INDUSTRY_VALUES  = ['Healthcare','Financial Services','Manufacturing','Sof
 const SYSTEM_PROMPT = `You are an ICP (Ideal Customer Profile) field extractor.
 Given a natural language description of target prospects, extract structured field values and return them as a JSON object.
 
-REQUIRED FIELDS — you must be able to extract ALL THREE from the prompt:
-1. job_title — a job title or role keyword (e.g. "Manager", "Director", "CEO", "Software Engineer")
-2. location — a city, state, or country (e.g. "New York", "California", "United States")
-3. industry — a business industry
+REQUIRED FIELDS — you must be able to extract AT LEAST job_title and industry from the prompt:
+1. job_title — one or more job titles/roles as comma-separated string (e.g. "Founder,CEO,CTO"). Extract ALL mentioned roles.
+2. industry — a business industry (map to closest known value)
+3. sub_industry — vertical or specialisation (e.g. "SaaS", "Fintech", "EdTech"). Return "" if not mentioned.
 
-OPTIONAL FIELDS (extract if mentioned, otherwise return empty string ""):
-- seniority — extract ONLY if the prompt mentions a seniority level. If the job title IS the seniority (e.g. 'Founders'→Founder, 'Directors'→Director, 'Managers'→Manager, 'CEOs'→C-Level), set seniority to match. Must be one of EXACTLY: Intern, Specialist, Senior, Senior-Level, Manager, Head, Director, Vice President, President/Vice President, Partner, Owner, Founder, C-Level. Mappings: VP/SVP/EVP→Vice President, CEO/CTO/CFO/COO/CMO/Chief→C-Level, Founder/Co-Founder/Cofounder→Founder, Owner→Owner. If unclear or not mentioned return "".
-- company — company name keyword. If not mentioned return "".
+OPTIONAL FIELDS (extract if mentioned, otherwise return ""):
+- location — city, state, or country if mentioned (e.g. "New York", "California", "United States"). Return "" if not mentioned.
+- business_keywords — any domain/tech/product keywords mentioned, comma-separated. Return "" if not mentioned.
 - is_decision_maker — "TRUE" if user says decision maker/decision-making role, otherwise "".
 
 INDUSTRY MAPPING — map user's words to closest value from this list:
 Healthcare, Financial Services, Manufacturing, Software & Internet, Government, Computers & Electronics, Business Services, Education, Energy & Utilities, Real Estate & Construction, Telecommunications, Retail, Media & Entertainment, Consumer Services, Non-Profit, Transportation & Storage, Travel Recreation and Leisure, Wholesale & Distribution, Agriculture & Mining, Other.
 Examples: finance/financial→Financial Services, tech/technology/software→Software & Internet, healthcare/medical/pharma→Healthcare, real estate/construction→Real Estate & Construction, nonprofit→Non-Profit.
 
-IF any of the 3 required fields (job_title, location, industry) is missing or cannot be inferred:
+IF job_title or industry is missing or cannot be inferred:
 Return ONLY this JSON and nothing else:
-{"missing": ["field1", "field2"], "hint": "friendly message telling user what to add"}
+{"missing": ["job_title", "industry"], "hint": "friendly message telling user what to add"}
 
 IF all required fields are present:
 Return ONLY a valid JSON object like this and nothing else — no explanation, no markdown, no backticks:
-{"job_title": "...", "location": "...", "industry": "...", "seniority": "...", "company": "", "is_decision_maker": ""}`;
+{"job_title": "Founder,CEO", "industry": "Software & Internet", "sub_industry": "SaaS", "business_keywords": "", "is_decision_maker": ""}`;
 
 let generatedFields = null;
 
@@ -898,10 +1067,10 @@ async function generateFields() {
     }
 
     // Validate required fields came back
-    if (!parsed.job_title || !parsed.location || !parsed.industry) {
+    if (!parsed.job_title || !parsed.industry) {
       promptEl.style.borderColor = '#f59e0b';
       statusEl.style.color = '#f59e0b';
-      const missing = ['job_title','location','industry'].filter(f => !parsed[f]);
+      const missing = ['job_title','industry'].filter(f => !parsed[f]);
       statusEl.innerHTML = `⚠ Could not extract: <strong>${missing.join(', ')}</strong> — please be more specific.`;
       generateBtn.disabled = false;
       return;
@@ -910,13 +1079,15 @@ async function generateFields() {
     generatedFields = parsed;
 
     // Show extracted fields preview
+    const _positions   = (parsed.job_title || '').split(',').map(s => s.trim()).filter(Boolean);
+    const _subIndustry = parsed.sub_industry || parsed.business_keywords || '';
+    const _seniority   = _positions.length === 1 ? normalizeSeniority(_positions[0]) : '';
     const lines = [
-      `job_title       : ${parsed.job_title}`,
-      `location        : ${parsed.location}`,
-      `industry        : ${parsed.industry}`,
-      parsed.seniority       ? `seniority       : ${parsed.seniority}` : null,
-      parsed.company         ? `company         : ${parsed.company}` : null,
-      parsed.is_decision_maker === 'TRUE' ? `is_decision_maker: TRUE` : null,
+      `job_title         : ${parsed.job_title}`,
+      `industry          : ${normalizeIndustry(parsed.industry || '')}`,
+      _subIndustry ? `sub_industry      : ${_subIndustry}` : null,
+      _seniority   ? `seniority         : ${_seniority}` : null,
+      parsed.is_decision_maker === 'TRUE' ? `is_decision_maker : TRUE` : null,
     ].filter(Boolean).join('\n');
 
     previewText.textContent = lines;
@@ -938,24 +1109,37 @@ async function generateFields() {
 ══════════════════════════════════════════ */
 document.getElementById('aiForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const title = val('a_title'), rep = val('a_assigned_rep');
-  if (!title) { document.getElementById('a_title').classList.add('error'); showToast('Campaign title is required.','error'); return; }
+  const aTitleEl = document.getElementById('a_title');
+  const title = aTitleEl.value; // campaign ID
+  const campaign_name = aTitleEl.options[aTitleEl.selectedIndex]?.text || '';
+  const rep = val('a_assigned_rep');
+  if (!title) { aTitleEl.classList.add('error'); showToast('Please select a campaign.','error'); return; }
   if (!rep)   { document.getElementById('a_assigned_rep').classList.add('error'); showToast('Assigned rep is required.','error'); return; }
   if (!generatedFields) { showToast('Extract fields first using ✦', 'error'); return; }
 
   const payload = {
     title,
+    campaign_name       : campaign_name,
     assigned_rep        : rep,
     daily_prospect_limit: parseInt(val('a_daily_limit')) || 25,
     data_source         : document.querySelector('input[name="a_data_source"]:checked')?.value || 'own_database',
     // ICP fields extracted by Groq from natural language
-    job_title           : generatedFields.job_title                             || '',
-    location            : generatedFields.location                              || '',
-    industry            : normalizeIndustry(generatedFields.industry            || ''),
-    seniority           : normalizeSeniority(generatedFields.seniority          || ''),
-    company             : generatedFields.company                               || '',
-    is_decision_maker   : generatedFields.is_decision_maker                     || '',
+    job_title           : generatedFields.job_title || '',
+    industry            : normalizeIndustry(generatedFields.industry || ''),
+    specialties         : (() => {
+      const sub  = generatedFields.sub_industry      || '';
+      const kw   = generatedFields.business_keywords || '';
+      return sub ? sub : (kw ? kw : '');
+    })(),
+    seniority           : (() => {
+      const positions = (generatedFields.job_title || '').split(',').map(s => s.trim()).filter(Boolean);
+      return positions.length === 1 ? normalizeSeniority(positions[0]) : '';
+    })(),
+    location            : generatedFields.location || '',
+    is_decision_maker   : generatedFields.is_decision_maker || '',
+    // kept for n8n compatibility
     name                : '',
+    company             : '',
     // Meta
     ai_search           : true,
     ai_prompt           : document.getElementById('a_prompt').value.trim(),
